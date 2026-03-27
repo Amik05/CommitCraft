@@ -5,7 +5,8 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import httpx
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 app = FastAPI(title="CommitCraft API")
 
@@ -111,18 +112,17 @@ def build_commit_list(commits: list[dict]) -> str:
 
 async def generate_changelog(commit_text: str) -> dict:
     """Send commit list to Gemini and parse the structured JSON response."""
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+    config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT,
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json",
-            temperature=0.2,
-        ),
+        response_mime_type="application/json",
+        temperature=0.2,
     )
 
     try:
-        response = model.generate_content(
-            f"Here are the git commits to transform into a changelog:\n\n{commit_text}"
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=f"Here are the git commits to transform into a changelog:\n\n{commit_text}",
+            config=config,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
