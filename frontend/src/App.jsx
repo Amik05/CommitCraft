@@ -161,13 +161,13 @@ export default function App() {
         const data = await res.json();
 
         if (!res.ok) {
-          setError(data.detail || "An unexpected error occurred.");
+          setError({ message: data.detail || "An unexpected error occurred.", isQuota: res.status === 429 });
           return;
         }
 
         setResult(data);
       } catch (err) {
-        setError("Could not reach the backend. Make sure it is running on http://localhost:8000.");
+        setError({ message: "Could not reach the backend. Make sure it is running on http://localhost:8000.", isQuota: false });
       } finally {
         setLoading(false);
       }
@@ -194,7 +194,7 @@ export default function App() {
         <header className="mb-12 text-center">
           <div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-500 font-medium tracking-wide uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Powered by Google Gemini
+            Powered by Gemini 2.5 Flash
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-3">
             Commit<span className="text-zinc-500">Craft</span>
@@ -270,11 +270,17 @@ export default function App() {
 
         {/* Error */}
         {error && (
-          <div className="mb-8 flex items-start gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            </svg>
-            <span>{error}</span>
+          <div className={`mb-8 flex items-start gap-3 p-4 rounded-lg text-sm border ${error.isQuota ? "bg-orange-500/10 border-orange-500/30 text-orange-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
+            {error.isQuota ? (
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            )}
+            <span>{error.message}</span>
           </div>
         )}
 

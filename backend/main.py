@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import httpx
 from google import genai
 from google.genai import types
+from google.genai import errors as genai_errors
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -120,12 +121,33 @@ async def generate_changelog(commit_text: str) -> dict:
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=f"Here are the git commits to transform into a changelog:\n\n{commit_text}",
             config=config,
         )
+    except genai_errors.ClientError as e:
+        # #region agent log
+        import time as _t
+        _log = {"sessionId":"221604","runId":"post-fix","hypothesisId":"A","location":"main.py:generate_changelog","message":"ClientError caught post-fix","data":{"code":str(getattr(e,"code",None)),"exc_str":str(e)[:200]},"timestamp":int(_t.time()*1000)}
+        with open("/Users/amik/Projects/Commit/.cursor/debug-221604.log","a") as _f: import json as _j; _f.write(_j.dumps(_log)+"\n")
+        # #endregion
+        code = getattr(e, "code", None)
+        if str(code) == "429":
+            retry_match = re.search(r"retry in ([\d.]+)s", str(e), re.IGNORECASE)
+            retry_hint = f" Retry in ~{int(float(retry_match.group(1)))}s." if retry_match else ""
+            daily = "PerDay" in str(e)
+            if daily:
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Gemini free-tier daily quota exhausted. Please wait until tomorrow or add billing at https://ai.dev/rate-limit to continue.",
+                )
+            raise HTTPException(
+                status_code=429,
+                detail=f"Gemini rate limit reached.{retry_hint} Please wait a moment and try again.",
+            )
+        raise HTTPException(status_code=502, detail=f"Gemini API error (code {code}): {str(e)[:200]}")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)[:200]}")
 
     raw = response.text.strip()
 
