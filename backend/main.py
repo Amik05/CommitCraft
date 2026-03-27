@@ -126,11 +126,6 @@ async def generate_changelog(commit_text: str) -> dict:
             config=config,
         )
     except genai_errors.ClientError as e:
-        # #region agent log
-        import time as _t
-        _log = {"sessionId":"221604","runId":"post-fix","hypothesisId":"A","location":"main.py:generate_changelog","message":"ClientError caught post-fix","data":{"code":str(getattr(e,"code",None)),"exc_str":str(e)[:200]},"timestamp":int(_t.time()*1000)}
-        with open("/Users/amik/Projects/Commit/.cursor/debug-221604.log","a") as _f: import json as _j; _f.write(_j.dumps(_log)+"\n")
-        # #endregion
         code = getattr(e, "code", None)
         if str(code) == "429":
             retry_match = re.search(r"retry in ([\d.]+)s", str(e), re.IGNORECASE)
